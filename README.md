@@ -9,12 +9,13 @@ npm run build      # static output in dist/ (serve over HTTPS)
 ```
 
 ## Controls
-Both axes are independent, absolute and linear over ±30°: −30° → −100 %, 0° → neutral (50 % midpoint),
-+30° → +100 %, held at the extreme beyond ±30°.
+The tilt is absolute over ±60°: −60° → −100 %, 0° → neutral (50 % midpoint), +60° → +100 %, held at the
+extreme beyond ±60°. An ease-in-out curve (`MOTION.easing`: 'sine' | 'cubic' | 'linear') shapes the transition:
+soft out of and into the extremes, faster through upright.
 
 | Input | Drives |
 |---|---|
-| Front/back tilt — 0° = phone **upright** (perpendicular to the ground); +30° = top tilted forward (away from you) → "tilt +100", −30° = tilted back → "tilt -100" | **both** the individual heights of the 8 wordmark rows **and** the shared gradient field |
+| Front/back tilt — 0° = phone **upright** (perpendicular to the ground); +60° = top tilted forward (away from you) → "tilt +100", −60° = tilted back → "tilt -100" | **both** the individual heights of the 8 wordmark rows **and** the shared gradient field |
 | Left/right tilt | currently disabled (restore in `Stage.jsx`: `draw(layoutRows(v), h)`) |
 | Desktop / no sensor: pointer Y | both effects |
 

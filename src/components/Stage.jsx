@@ -6,6 +6,21 @@ import { MOTION } from '../config/art.js';
 
 
 /**
+ * Ease-in-out on the tilt → state curve, symmetric around upright.
+ * x ∈ [-1, 1] → [-1, 1]; ±1 and 0 stay fixed.
+ */
+const EASE = {
+  linear: (k) => k,
+  sine: (k) => 0.5 - 0.5 * Math.cos(Math.PI * k),
+  cubic: (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2),
+};
+function easeInOut(x) {
+  const f = EASE[MOTION.easing] || EASE.linear;
+  const k = (Math.min(1, Math.max(-1, x)) + 1) / 2;
+  return f(k) * 2 - 1;
+}
+
+/**
  * Two cascaded frame-rate-independent low-pass stages per channel:
  * filters sensor jitter, follows the hand closely, never overshoots.
  */
@@ -30,7 +45,8 @@ function useAnimationLoop(target, draw) {
       const { v, h } = smooth(target.current, dt);
       // front/back tilt (v) drives BOTH the row heights and the gradient field;
       // left/right tilt (h) is currently disabled (to restore: draw(layoutRows(v), h))
-      draw(layoutRows(v), v);
+      const e = easeInOut(v);
+      draw(layoutRows(e), e);
       raf = requestAnimationFrame(tick);
     };
     const onVis = () => {

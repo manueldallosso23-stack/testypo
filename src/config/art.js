@@ -62,12 +62,18 @@ export const ROWS = {
 export const MOTION = {
   /** degrees of front/back tilt from UPRIGHT for the full −100…+100 range
    *  (+ = top tilted forward / away from the user) */
-  verticalRange: 30,
+  verticalRange: 60,
   /** degrees of left/right tilt (from level) for the full −100…+100 range */
-  horizontalRange: 30,
+  horizontalRange: 60,
   /** invert if a direction feels backwards on device */
   invertVertical: false,
   invertHorizontal: false,
+  /**
+   * Ease-in-out applied to the tilt → state curve (rows and gradient alike):
+   * 'sine' (gentle), 'cubic' (stronger), 'linear' (off).
+   * Soft start from each extreme, faster through upright, soft arrival.
+   */
+  easing: 'sine',
   /** smoothing stiffness (1/s). Two cascaded stages → soft, no overshoot. */
   stiffness: 9,
   /** ms to wait for sensor data before falling back to pointer control */
