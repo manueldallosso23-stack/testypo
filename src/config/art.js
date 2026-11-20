@@ -37,19 +37,20 @@ export const GRADIENTS = {
   },
 };
 
-/** Typography layout & scaling (vertical tilt) */
+/**
+ * Typography layout & stretch (LEFT/RIGHT rotation).
+ *
+ * The wordmark always spans the full safe-area WIDTH (never scaled on x).
+ * Its height is a fraction of the safe-area height:
+ *   heightFraction = minHeight + (1 − minHeight) · (s + 1) / 2,  s ∈ [−1, 1]
+ *   s = −1 (rotated fully left)  → minHeight   (compressed)
+ *   s = +1 (rotated fully right) → 1.0         (all rows fill the safe height)
+ *   s =  0 (level)               → exact midpoint
+ * Vertical pivot anchorY (0.5 = centred), so the layout stays centred.
+ */
 export const TYPOGRAPHY = {
-  /* Fit: always CONTAIN inside the safe area, with width reserved for the
-     maximum stretch (1 + scaleAmount), so nothing is ever cropped. */
-  /** Horizontal pivot of scaleX in frame space (0.5 = centre). */
-  anchorX: 0.5,
-  /**
-   * scaleX = 1 + v · scaleAmount, v ∈ [−1, 1].
-   * v = 0 → 1.0 = the untouched Figma artwork, exactly halfway between the
-   * two extremes (1 − amount … 1 + amount). Figma defines no stretch extent,
-   * so this single value sets it.
-   */
-  scaleAmount: 0.5,
+  minHeight: 0.5,
+  anchorY: 0.5,
 };
 
 /** Sensor mapping & smoothing */

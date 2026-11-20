@@ -30,13 +30,13 @@ export function surfaceColor(surface, y, h) {
 
 /**
  * Vertical CSS gradient for a surface, with stops placed in screen px so it
- * lines up with the fitted frame (fit = { scale, oy }).
+ * lines up with the fitted frame (fit = { sy, oy }).
  */
 export function cssGradient(surface, h, fit, viewH, samples = 12) {
   const parts = [];
   for (let i = 0; i <= samples; i++) {
     const py = (i / samples) * viewH;
-    const y = (py - fit.oy) / fit.scale;
+    const y = (py - fit.oy) / fit.sy;
     parts.push(`${surfaceColor(surface, y, h)} ${py.toFixed(1)}px`);
   }
   return `linear-gradient(to bottom, ${parts.join(',')})`;

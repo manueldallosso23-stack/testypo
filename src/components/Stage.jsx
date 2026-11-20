@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { createRenderer, computeFit, svgSize, stretchable } from '../gl/renderer.js';
+import { createRenderer, computeFit, svgSize, stretchable, toScaleY } from '../gl/renderer.js';
 import { cssGradient } from '../gl/field.js';
 import { measureViewport, onViewportChange } from '../gl/viewport.js';
 import { MOTION, TYPOGRAPHY } from '../config/art.js';
 
-/** v ∈ [-1, 1] → scaleX; v = 0 is the untouched Figma artwork (midpoint). */
-const toScaleX = (v) => Math.max(0.05, 1 + v * TYPOGRAPHY.scaleAmount);
 
 /**
  * Two cascaded frame-rate-independent low-pass stages per channel:
@@ -30,7 +28,8 @@ function useAnimationLoop(target, draw) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const { v, h } = smooth(target.current, dt);
-      draw(toScaleX(v), h);
+      // left/right rotation (h) → vertical stretch; front/back tilt (v) → gradient
+      draw(toScaleY(h), v);
       raf = requestAnimationFrame(tick);
     };
     const onVis = () => {
@@ -80,20 +79,20 @@ function CSSStage({ svgText, target }) {
   const svg = useRef(svgSize(svgText)).current;
   const maskUrl = useRef(`url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(stretchable(svgText))}")`).current;
 
-  const draw = useRef((scaleX, h) => {
+  const draw = useRef((scaleY, g) => {
     const view = measureViewport();
     const H = view.H;
     const fit = computeFit(view, svg);
-    const bg = cssGradient('background', h, fit, H);
-    const fg = cssGradient('typography', h, fit, H);
-    const ax = fit.ox + fit.dw * TYPOGRAPHY.anchorX;
-    const w = fit.dw * scaleX;
+    const bg = cssGradient('background', g, fit, H);
+    const fg = cssGradient('typography', g, fit, H);
+    const ay = fit.oy + fit.dh * TYPOGRAPHY.anchorY;
+    const h = fit.dh * scaleY;
     bgRef.current.style.background = bg;
     const s = fgRef.current.style;
     s.background = fg;
     s.webkitMaskImage = s.maskImage = maskUrl;
-    s.webkitMaskSize = s.maskSize = `${w}px ${fit.dh}px`;
-    s.webkitMaskPosition = s.maskPosition = `${ax - w * TYPOGRAPHY.anchorX}px ${fit.oy}px`;
+    s.webkitMaskSize = s.maskSize = `${fit.dw}px ${h}px`;
+    s.webkitMaskPosition = s.maskPosition = `${fit.ox}px ${ay - h * TYPOGRAPHY.anchorY}px`;
   }).current;
   useAnimationLoop(target, draw);
 

@@ -11,10 +11,13 @@ npm run build      # static output in dist/ (serve over HTTPS)
 ## Controls
 | Input | Drives |
 |---|---|
-| Phone front/back tilt (β) | `scaleX` of the lettering, pivoted at `TYPOGRAPHY.anchorX` |
-| Phone left/right tilt (γ) | the shared gradient field (state −1 ↔ 0 ↔ +1) |
-| Desktop / no sensor: pointer Y / X | same two values |
-| Double-tap (sensor mode) | re-zero the vertical rest pose |
+| Phone left/right rotation (γ) | vertical stretch of the wordmark only: full left = 50 % of the safe height, level = 75 %, full right = 100 % |
+| Phone front/back tilt (β, vs. rest pose) | the shared gradient field only: back = "tilt -100", rest = 50 % midpoint, forward = "tilt +100" |
+| Desktop / no sensor: pointer X / Y | same two values |
+| Double-tap (sensor mode) | re-zero the front/back rest pose |
+
+The wordmark always spans the full safe-area width and is never scaled horizontally; it stays centred
+vertically inside the safe area (notch / Dynamic Island / home indicator excluded).
 
 iOS shows one "Tap to enable motion" button (required by Safari's permission API); nowhere else has any UI.
 
@@ -39,6 +42,6 @@ h = +1 reproduces "tilt +100", h = −1 "tilt -100", h = 0 is the exact 50 % mid
 (background #250A24, lettering #4A1448). Renders at ±1 match Figma's own frame renders to ±1 RGB level
 (only anti-aliasing on letter edges differs).
 
-Vertical tilt `v` (−1…1) only sets `scaleX = 1 + v · scaleAmount` (default 0.5 → 0.5×…1.5×),
-pivoted at the frame centre; v = 0 is the untouched Figma artwork. The gradients are in frame space
-along y, so scaling never touches them.
+Here `h` is the **front/back** tilt. Left/right rotation `s` only sets the wordmark height,
+`minHeight + (1 − minHeight) · (s + 1)/2` of the safe area (`TYPOGRAPHY.minHeight`, default 0.5), pivoted at
+the vertical centre. The gradients are pinned to the safe area, so stretching never moves them.

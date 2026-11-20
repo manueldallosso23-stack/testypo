@@ -1,7 +1,8 @@
 /**
  * Single-pass WebGL renderer.
  *
- * ONE motion value h ∈ [-1, 1] drives ONE shared gradient field.
+ * Front/back tilt → ONE motion value g ∈ [-1, 1] → ONE shared gradient field.
+ * Left/right rotation → vertical stretch of the lettering only (never x).
  * Both surfaces read it through the Figma gradients, which are each
  * other's complement (stops reversed between the "tilt +100" and
  * "tilt -100" frames):
@@ -10,8 +11,8 @@
  *     typography  = rampFg( t_s of the Union gradient  )
  * h = +1 → frame "tilt +100", h = −1 → "tilt -100", h = 0 → exact 50 % midpoint.
  *
- * The gradients live in FRAME space along y; the lettering mask is sampled
- * with scaleX applied on x only, so scaling never touches the gradients.
+ * The gradients are pinned to the safe area (frame space at full height);
+ * only the lettering mask is scaled on y, so stretching never moves them.
  */
 import { GRADIENTS, TYPOGRAPHY, FRAME } from '../config/art.js';
 
@@ -27,8 +28,8 @@ precision highp float;
 
 uniform vec2  uRes;                 // drawing-buffer size (px)
 uniform vec4  uFit;                 // screenUV -> frameUV : uv*xy + zw
-uniform float uScaleX;              // horizontal scale of the lettering
-uniform float uAnchorX;             // pivot of the scale, frame UV
+uniform float uScaleY;              // vertical scale of the lettering (0..1)
+uniform float uAnchorY;             // pivot of the scale, frame UV
 uniform float uH;                   // shared motion value, -1..1
 uniform float uFrameH;              // frame height (Figma units)
 uniform vec4  uBgSpan;              // background y0, y1   | typography y0, y1
@@ -63,7 +64,7 @@ float mask(vec2 uv) {
 void main() {
   vec2 frag = gl_FragCoord.xy;
   vec2 p = vec2(frag.x / uRes.x, 1.0 - frag.y / uRes.y);   // y down, like Figma
-  vec2 fuv = p * uFit.xy + uFit.zw;                         // frame UV (unscaled)
+  vec2 fuv = p * uFit.xy + uFit.zw;                         // frame UV over the safe area
   float y = fuv.y * uFrameH;                                // Figma y
 
   // ---- shared field: one motion value, complementary Figma gradients ----
@@ -72,14 +73,14 @@ void main() {
   vec3 bg = rampBg(0.5 + uH * (tBg - 0.5));
   vec3 fg = rampFg(0.5 + uH * (tFg - 0.5));
 
-  // ---- lettering coverage (scaleX applied on x only) ----
+  // ---- lettering coverage (scaleY applied on y only; x never scaled) ----
   vec2 suv = fuv;
-  suv.x = uAnchorX + (suv.x - uAnchorX) / uScaleX;
-  // 4-tap horizontal box filter across the pixel footprint: clean edges
+  suv.y = uAnchorY + (suv.y - uAnchorY) / uScaleY;
+  // 4-tap vertical box filter across the pixel footprint: clean edges
   // when the lettering is compressed.
-  float fx = uFit.x / (uRes.x * uScaleX);
-  float m = 0.25 * (mask(suv + vec2(-0.375 * fx, 0.0)) + mask(suv + vec2(-0.125 * fx, 0.0)) +
-                    mask(suv + vec2( 0.125 * fx, 0.0)) + mask(suv + vec2( 0.375 * fx, 0.0)));
+  float fy = uFit.y / (uRes.y * uScaleY);
+  float m = 0.25 * (mask(suv + vec2(0.0, -0.375 * fy)) + mask(suv + vec2(0.0, -0.125 * fy)) +
+                    mask(suv + vec2(0.0,  0.125 * fy)) + mask(suv + vec2(0.0,  0.375 * fy)));
 
   vec3 col = mix(bg, fg, m);
   col += (hash(frag) - 0.5) / 255.0;       // dither: no banding in dark ramps
@@ -114,7 +115,7 @@ export function svgSize(svgText) {
   return { w: parseFloat(el.getAttribute('width')) || 1, h: parseFloat(el.getAttribute('height')) || 1 };
 }
 
-/** Allow non-uniform scaling of the artwork (needed for scaleX / 2× texture). */
+/** Allow non-uniform scaling of the artwork (full-width frame, vertical stretch). */
 export function stretchable(svgText) {
   return svgText.replace(/<svg\b([^>]*?)\s*preserveAspectRatio="[^"]*"/, '<svg$1')
     .replace(/<svg\b/, '<svg preserveAspectRatio="none"');
@@ -139,20 +140,21 @@ async function rasterise(svgText, w, h) {
 }
 
 /**
- * CONTAIN fit of the Figma frame inside the safe area.
- * Width is budgeted for the MAXIMUM horizontal stretch, so the lettering can
- * never overflow the screen at any tilt; the frame is centred in the safe area.
+ * Frame placement: the Figma frame is mapped onto the whole safe area —
+ * full width always, full height at maximum stretch. The vertical stretch
+ * (uScaleY ≤ 1) only ever shrinks it, so nothing can leave the safe area.
  *   view = { W, H, safe: { x, y, w, h } }   (CSS px)
+ * sy = CSS px per Figma unit vertically (used to place the gradients).
  */
 export function computeFit(view, svg) {
-  const maxScale = 1 + TYPOGRAPHY.scaleAmount;
-  // widest extent either side of the pivot at max stretch, in frame widths
-  const widthFactor = 2 * Math.max(TYPOGRAPHY.anchorX, 1 - TYPOGRAPHY.anchorX) * maxScale;
   const { safe } = view;
-  const scale = Math.min(safe.w / (svg.w * widthFactor), safe.h / svg.h);
-  const dw = svg.w * scale;
-  const dh = svg.h * scale;
-  return { scale, dw, dh, ox: safe.x + (safe.w - dw) / 2, oy: safe.y + (safe.h - dh) / 2 };
+  return { dw: safe.w, dh: safe.h, ox: safe.x, oy: safe.y, sy: safe.h / svg.h };
+}
+
+/** s ∈ [−1, 1] (left/right rotation) → height fraction of the safe area. */
+export function toScaleY(s) {
+  const k = Math.min(1, Math.max(0, (s + 1) / 2));
+  return TYPOGRAPHY.minHeight + (1 - TYPOGRAPHY.minHeight) * k;
 }
 
 /** Pad a stop list to STOPS entries → flat [r,g,b,...] and positions. */
@@ -193,7 +195,7 @@ export function createRenderer(canvas, svgText) {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const U = {};
-  for (const n of ['uRes', 'uFit', 'uScaleX', 'uAnchorX', 'uH', 'uFrameH', 'uBgSpan',
+  for (const n of ['uRes', 'uFit', 'uScaleY', 'uAnchorY', 'uH', 'uFrameH', 'uBgSpan',
     'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask']) U[n] = gl.getUniformLocation(prog, n);
 
   // ---- static uniforms from the Figma config ----
@@ -206,7 +208,7 @@ export function createRenderer(canvas, svgText) {
   gl.uniform4f(U.uBgSpan, GRADIENTS.background.y0, GRADIENTS.background.y1,
     GRADIENTS.typography.y0, GRADIENTS.typography.y1);
   gl.uniform1f(U.uFrameH, FRAME.h);
-  gl.uniform1f(U.uAnchorX, TYPOGRAPHY.anchorX);
+  gl.uniform1f(U.uAnchorY, TYPOGRAPHY.anchorY);
 
   // mask texture
   const tex = gl.createTexture();
@@ -238,8 +240,8 @@ export function createRenderer(canvas, svgText) {
     // screen uv (0..1) -> svg uv (0..1)
     gl.uniform4f(U.uFit, w / fit.dw, h / fit.dh, -fit.ox / fit.dw, -fit.oy / fit.dh);
 
-    // 2× horizontal headroom so the stretched lettering stays sharp
-    const tw = Math.min(maxTex, Math.round(fit.dw * dpr * 2));
+    // largest on-screen size is scaleY = 1 → rasterise at exactly that
+    const tw = Math.min(maxTex, Math.round(fit.dw * dpr));
     const th = Math.min(maxTex, Math.round(fit.dh * dpr));
     const token = ++rasterToken;
     const c = await rasterise(svgText, tw, th);
@@ -250,10 +252,10 @@ export function createRenderer(canvas, svgText) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
   }
 
-  /** scaleX from the vertical tilt, h (−1..1) from the horizontal tilt */
-  function render(scaleX, h) {
-    gl.uniform1f(U.uScaleX, scaleX);
-    gl.uniform1f(U.uH, h);
+  /** scaleY from the left/right rotation, g (−1..1) from the front/back tilt */
+  function render(scaleY, g) {
+    gl.uniform1f(U.uScaleY, scaleY);
+    gl.uniform1f(U.uH, g);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 

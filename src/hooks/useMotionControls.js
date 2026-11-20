@@ -1,7 +1,7 @@
 /**
  * Produces two independent normalised control targets, each in [-1, 1]:
- *   v — vertical (front/back) tilt   → drives typography scaleX
- *   h — horizontal (left/right) tilt → drives the shared gradient field
+ *   v — front/back tilt (vs. calibrated rest pose) → drives the shared gradient field
+ *   h — left/right rotation                         → drives the vertical stretch
  *
  * Sources, in priority order:
  *   1. DeviceOrientation (requests permission on iOS via a user tap)
