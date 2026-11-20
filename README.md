@@ -14,9 +14,9 @@ Both axes are independent, absolute and linear over ±30°: −30° → −100 %
 
 | Input | Drives |
 |---|---|
-| Front/back tilt — 0° = phone **upright** (perpendicular to the ground); +30° = top tilted forward (away from you) → "tilt +100", −30° = tilted back → "tilt -100" | the individual heights of the 8 wordmark rows |
-| Left/right tilt — 0° = level; + = right side down | the shared gradient field (unchanged visuals) |
-| Desktop / no sensor: pointer Y / X | rows / gradient |
+| Front/back tilt — 0° = phone **upright** (perpendicular to the ground); +30° = top tilted forward (away from you) → "tilt +100", −30° = tilted back → "tilt -100" | **both** the individual heights of the 8 wordmark rows **and** the shared gradient field |
+| Left/right tilt | currently disabled (restore in `Stage.jsx`: `draw(layoutRows(v), h)`) |
+| Desktop / no sensor: pointer Y | both effects |
 
 Both angles are computed from the direction of gravity in the phone (derived from β/γ), so they stay stable
 when the phone is upright, where the raw γ angle is degenerate and jumps. Lying flat, left/right equals γ.

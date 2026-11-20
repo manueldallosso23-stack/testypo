@@ -28,8 +28,9 @@ function useAnimationLoop(target, draw) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const { v, h } = smooth(target.current, dt);
-      // front/back tilt (v) → row heights; left/right rotation (h) → gradient field
-      draw(layoutRows(v), h);
+      // front/back tilt (v) drives BOTH the row heights and the gradient field;
+      // left/right tilt (h) is currently disabled (to restore: draw(layoutRows(v), h))
+      draw(layoutRows(v), v);
       raf = requestAnimationFrame(tick);
     };
     const onVis = () => {
