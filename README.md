@@ -20,15 +20,15 @@ npm run build      # static output in dist/ (serve over HTTPS)
 Timings: `HOME` and `INTRO` in `src/config/art.js`.
 
 ## Controls
-The front/back tilt is absolute: phone **upright** (perpendicular to the ground) = stato 1 (Figma "tilt +100"),
+The front/back tilt is absolute: phone tilted **20° backward** = stato 1 (Figma "tilt +100"),
 **50° forward** (top away from you) = stato 2 ("tilt -100"); held beyond both ends (`MOTION.vertical`).
 An ease-in-out curve (`MOTION.easing`: 'sine' | 'cubic' | 'linear') shapes the transition: soft out of stato 1,
 faster mid-way, soft arrival at stato 2.
 
 | Input | Drives |
 |---|---|
-| Vertical (front/back) tilt — upright = stato 1 ("tilt +100"), 50° forward = stato 2 ("tilt -100") | the individual heights of the 8 wordmark rows |
-| Horizontal (left/right) tilt — level = 50 % midpoint, ±60° = "tilt ±100" | the shared gradient field |
+| Vertical (front/back) tilt — 20° backward = stato 1 ("tilt +100"), 50° forward = stato 2 ("tilt -100") | the individual heights of the 8 wordmark rows |
+| Horizontal (left/right) tilt — level = 50 % midpoint, ±70° = "tilt ±100" | the shared gradient field |
 | Desktop / no sensor: pointer Y / X | rows / gradient |
 
 Both angles are computed from the direction of gravity in the phone (derived from β/γ), so they stay stable

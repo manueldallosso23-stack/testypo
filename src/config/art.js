@@ -114,11 +114,11 @@ export const MOTION = {
    * Angle in degrees from UPRIGHT (phone perpendicular to the ground),
    * + = top tilted forward (away from the user).
    * State: +1 = Figma "tilt +100" (stato 1), −1 = "tilt -100" (stato 2).
-   * Upright → stato 1; 50° forward → stato 2; held beyond both ends.
+   * 20° backward → stato 1; 50° forward → stato 2; held beyond both ends.
    */
-  vertical: { fromAngle: 0, toAngle: 50, fromState: 1, toState: -1 },
+  vertical: { fromAngle: -20, toAngle: 50, fromState: 1, toState: -1 },
   /** degrees of left/right tilt (from level) for the full −100…+100 range */
-  horizontalRange: 60,
+  horizontalRange: 70,
   /** invert if the (currently disabled) left/right direction feels backwards */
   invertHorizontal: false,
   /**
