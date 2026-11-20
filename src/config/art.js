@@ -66,11 +66,11 @@ export const ROWS = {
 export const DITHER = {
   enabled: true,
   /** grain cell size in CSS px (1 = finest; 2–3 = chunkier raster) */
-  cellSize: 1.5,
+  cellSize: 1,
   /** colour steps per gradient (fewer = more posterised) */
-  levels: 4,
+  levels: 6,
   /** noise amplitude in steps: 1 = classic dither, >1 = grain even in flat areas */
-  spread: 2.0,
+  spread: 1.0,
 };
 
 /** Sensor mapping & smoothing */

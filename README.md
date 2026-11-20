@@ -60,6 +60,6 @@ grain (their reciprocal contrast is preserved). `enabled: false` restores the ex
 
 | Setting | Default | Effect |
 |---|---|---|
-| `cellSize` | 1.5 | grain size in CSS px |
-| `levels` | 4 | colour steps per gradient (fewer = more posterised) |
-| `spread` | 2.0 | noise amplitude in steps (higher = rawer, less readable) |
+| `cellSize` | 1 | grain size in CSS px |
+| `levels` | 6 | colour steps per gradient (fewer = more posterised) |
+| `spread` | 1.0 | noise amplitude in steps (higher = rawer, less readable) |
