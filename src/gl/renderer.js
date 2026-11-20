@@ -19,7 +19,7 @@
  * wordmark is rasterised into a vertical "mip" atlas (one level per halving
  * of height, each rendered from the vector) so short rows stay crisp.
  */
-import { GRADIENTS, ROWS, FRAME, DITHER } from '../config/art.js';
+import { GRADIENTS, ROWS, FRAME } from '../config/art.js';
 
 const ROW_COUNT = 8;
 const LEVELS = 6;
@@ -50,7 +50,6 @@ uniform float uBgPos[${STOPS}];
 uniform vec3  uFgCol[${STOPS}];
 uniform float uFgPos[${STOPS}];
 uniform sampler2D uMask;
-uniform vec3  uDither;              // cell size (device px), levels, spread (0 = off)
 
 vec3 rampBg(float t) {
   vec3 c = uBgCol[0];
@@ -67,20 +66,6 @@ vec3 rampFg(float t) {
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-// ---- dithering layer --------------------------------------------------------
-// Static white-noise threshold per screen-space grain cell (does not move with
-// the tilt). It quantises a surface's position ALONG ITS OWN FIGMA GRADIENT to
-// a few levels, so every output colour is still a colour of that gradient.
-float grain(vec2 fragPx) {
-  vec2 cell = floor(fragPx / uDither.x);
-  return hash(cell + 17.0) * 0.5 + hash(cell * 1.618 + 3.0) * 0.5;   // 0..1, finer distribution
-}
-float dither(float t, float n) {
-  if (uDither.z <= 0.0) return t;
-  float L = uDither.y - 1.0;                                   // level steps
-  return clamp(floor(t * L + 0.5 + (n - 0.5) * uDither.z) / L, 0.0, 1.0);
 }
 
 // coverage of one wordmark row at (u, t) — t ∈ [0,1) inside the row —
@@ -118,12 +103,8 @@ void main() {
   // ---- shared field: one motion value, complementary Figma gradients ----
   float tBg = clamp((y - uBgSpan.x) / (uBgSpan.y - uBgSpan.x), 0.0, 1.0);
   float tFg = clamp((y - uBgSpan.z) / (uBgSpan.w - uBgSpan.z), 0.0, 1.0);
-  float sBg = 0.5 + uH * (tBg - 0.5);      // unchanged shared-field readings
-  float sFg = 0.5 + uH * (tFg - 0.5);
-  // dithering layer on top: same grain for both surfaces keeps their contrast
-  float n = grain(frag);
-  vec3 bg = rampBg(dither(sBg, n));
-  vec3 fg = rampFg(dither(sFg, n));
+  vec3 bg = rampBg(0.5 + uH * (tBg - 0.5));
+  vec3 fg = rampFg(0.5 + uH * (tFg - 0.5));
 
   // ---- lettering: 8 rows, full width, individual heights (x never scaled) ----
   // two vertical sub-samples smooth the row edges (rows clip their wordmark)
@@ -258,7 +239,7 @@ export function createRenderer(canvas, svgText) {
 
   const U = {};
   for (const n of ['uRes', 'uFit', 'uRowTop', 'uRowH', 'uPxPerUnit', 'uLvlOff', 'uLvlH', 'uLvlPx',
-    'uH', 'uFrameH', 'uBgSpan', 'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask', 'uDither']) U[n] = gl.getUniformLocation(prog, n);
+    'uH', 'uFrameH', 'uBgSpan', 'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask']) U[n] = gl.getUniformLocation(prog, n);
 
   // ---- static uniforms from the Figma config ----
   const bg = rampUniforms(GRADIENTS.background.stops);
@@ -302,8 +283,6 @@ export function createRenderer(canvas, svgText) {
     gl.uniform4f(U.uFit, w / fit.dw, h / fit.dh, -fit.ox / fit.dw, -fit.oy / fit.dh);
     const pxPerUnit = fit.sy * dpr;
     gl.uniform1f(U.uPxPerUnit, pxPerUnit);
-    gl.uniform3f(U.uDither, Math.max(1, DITHER.cellSize * dpr), DITHER.levels,
-      DITHER.enabled ? DITHER.spread : 0);
 
     // level 0 = tallest row height that can occur on screen
     const tallest = Math.max(...ROWS.left.map((r) => r[1]), ...ROWS.right.map((r) => r[1]));
