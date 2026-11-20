@@ -50,6 +50,7 @@ body,
 .home {
   position: absolute;
   inset: 0;
+  overflow: hidden; /* stars are cut by the screen edge only, as by the Figma frame */
   margin: 0;
   padding: 0;
   border: 0;
@@ -62,12 +63,6 @@ body,
 .home--leaving {
   opacity: 0;
   pointer-events: none;
-}
-
-.home__frame {
-  position: absolute;
-  display: block;
-  overflow: hidden; /* the Figma frame clips its content */
 }
 
 .home__part {

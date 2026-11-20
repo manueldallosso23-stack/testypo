@@ -10,7 +10,10 @@ npm run build      # static output in dist/ (serve over HTTPS)
 
 ## Flow
 1. **Home** (Figma frame "home page", 2013:3779): artwork assembled from the Figma SVG exports in
-   `src/assets/figma/home/` at their Figma positions (`HOME.parts`), contain-fitted and never distorted,
+   `src/assets/figma/home/` at their Figma positions (`HOME.parts`). The frame spans the full safe-area width
+   (Figma side margins); title at the top margin, bottom block + tap text at the bottom margin; on shorter
+   screens only the middle band (character, side stars) compresses, uniformly. Stars are cut only by the
+   screen edge,
    + "tap to enable motion" as live text in Alpen-Trial Stencil Rounded Oblique, blinking.
 2. **Tap** anywhere: motion permission is requested (iOS needs it inside the tap) and the whole home fades out.
 3. **Intro**: the gradient fades in from black, then the 8 IGNOTO rows fade in staggered, top → bottom.
@@ -24,9 +27,9 @@ faster mid-way, soft arrival at stato 2.
 
 | Input | Drives |
 |---|---|
-| Front/back tilt — upright = stato 1 ("tilt +100"), 50° forward = stato 2 ("tilt -100") | **both** the individual heights of the 8 wordmark rows **and** the shared gradient field |
-| Left/right tilt | currently disabled (restore in `Stage.jsx`: `draw(layoutRows(v), h)`) |
-| Desktop / no sensor: pointer Y (top = stato 1, bottom = stato 2) | both effects |
+| Vertical (front/back) tilt — upright = stato 1 ("tilt +100"), 50° forward = stato 2 ("tilt -100") | the individual heights of the 8 wordmark rows |
+| Horizontal (left/right) tilt — level = 50 % midpoint, ±60° = "tilt ±100" | the shared gradient field |
+| Desktop / no sensor: pointer Y / X | rows / gradient |
 
 Both angles are computed from the direction of gravity in the phone (derived from β/γ), so they stay stable
 when the phone is upright, where the raw γ angle is degenerate and jumps. Lying flat, left/right equals γ.

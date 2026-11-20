@@ -65,20 +65,28 @@ export const ROWS = {
 export const HOME = {
   frame: { w: 378.701, h: 821 },
   /**
-   * Artwork parts — files in src/assets/figma/home/, placed at the top-left
-   * of their exported SVG (frame units, from Figma). Size comes from each
-   * SVG's own width/height. The frame clips anything outside it, like Figma.
-   * Missing files are simply skipped.
+   * Artwork parts — files in src/assets/figma/home/, top-left at (x, y) in
+   * frame units (Figma). Size comes from each SVG's own width/height.
+   * role:
+   *   top    — anchored to the top of the safe area (Figma top margin)
+   *   bottom — anchored to the bottom (Figma bottom margin)
+   *   middle — between them; compressed uniformly (never distorted) only when
+   *            the screen is shorter than the frame
+   *   edge   — side stars: keep their size and edge position, follow the
+   *            middle vertically; cut only by the screen edge, as in Figma
    */
   parts: [
-    // title "IgnotoDue Team · MI" (2013:4297) + bottom block "Crossfit 2 Hotline …"
-    // (2013:4079) exported together: origin = (11.3881, 22) in the frame
-    { file: 'text-blocks.svg', x: 11.3881, y: 22 },
-    { file: 'star-1.svg', x: -22.053, y: 77.5444 },    // star (unclipped export) 2013:4398
-    { file: 'face.svg', x: 54.0671, y: 149 },          // character               2013:4638
-    { file: 'star-3.svg', x: 0, y: 449.712 },          // star, export clipped at frame x = 0  2013:4626
-    { file: 'star-2.svg', x: 302.393, y: 496.7515 },   // star                    2013:4400
+    { file: 'title.svg', x: 38.0079, y: 22, role: 'top' },          // 2013:4297
+    { file: 'star-1.svg', x: -22.053, y: 77.5444, role: 'top' },    // 2013:4398
+    { file: 'face.svg', x: 54.0671, y: 149, role: 'middle' },       // 2013:4638
+    { file: 'star-3.svg', x: -70.1821, y: 449.712, role: 'edge' },  // 2013:4626
+    { file: 'star-2.svg', x: 302.393, y: 496.7515, role: 'edge' },  // 2013:4400
+    { file: 'bottom.svg', x: 11.3881, y: 599, role: 'bottom' },     // 2013:4079
   ],
+  /** frame-y band that may compress: below the title, above the bottom block */
+  middleBand: { from: 125.5, to: 599 },
+  /** below this compression, fall back to a plain contain fit */
+  minMiddleScale: 0.4,
   /** "tap to enable motion" — Alpen-Trial Stencil Rounded Oblique, white */
   /** + 1 px white stroke, OUTSIDE (as in Figma). baselineNudge: measured offset
    *  (frame units) for the browser's vs Figma's reading of the font metrics. */
