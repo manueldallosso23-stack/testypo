@@ -1,10 +1,11 @@
 /**
  * Produces two independent normalised control targets, each in [-1, 1]:
- *   v — front/back tilt, 0° = phone UPRIGHT (perpendicular to the ground),
- *       + = top tilted forward (away from the user)          → the 8 row heights
+ *   v — front/back tilt → state: upright (0°) = stato 1 ("tilt +100"),
+ *       50° forward (top away from the user) = stato 2 ("tilt -100")
+ *       (MOTION.vertical)                                     → rows + gradient
  *   h — left/right tilt, 0° = level, + = right side down      → shared gradient field
- * Both are LINEAR over ±MOTION range degrees: −30° → −1, 0° → 0 (midpoint),
- * +30° → +1, clamped beyond.
+ * Both are linear in the angle and clamped at the ends; easing is applied
+ * later in the render loop.
  *
  * Both angles are derived from the direction of gravity in the device frame
  * (computed from β/γ), not from raw β/γ: near upright β ≈ 90° the Euler angle γ
@@ -73,9 +74,11 @@ export function useMotionControls() {
   const onOrientation = useCallback((e) => {
     if (e.beta == null || e.gamma == null) return;
     const [pitch, roll] = tiltAngles(e.beta, e.gamma);
-    let v = pitch / MOTION.verticalRange;   // absolute: upright = 0
+    // absolute: progress 0 at fromAngle (upright) … 1 at toAngle (50° forward)
+    const V = MOTION.vertical;
+    const k = clamp((pitch - V.fromAngle) / (V.toAngle - V.fromAngle), 0, 1);
+    const v = V.fromState + (V.toState - V.fromState) * k;
     let h = roll / MOTION.horizontalRange;
-    if (MOTION.invertVertical) v = -v;
     if (MOTION.invertHorizontal) h = -h;
     target.current.v = clamp(v, -1, 1);
     target.current.h = clamp(h, -1, 1);
@@ -118,7 +121,9 @@ export function useMotionControls() {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       const y = (e.clientY / window.innerHeight) * 2 - 1;
       target.current.h = clamp(x, -1, 1);
-      target.current.v = clamp(-y, -1, 1); // up = stretch
+      // top of the window = stato 1, bottom = stato 2
+      const V = MOTION.vertical;
+      target.current.v = V.fromState + (V.toState - V.fromState) * clamp((y + 1) / 2, 0, 1);
     };
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerdown', onMove, { passive: true });

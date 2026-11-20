@@ -9,15 +9,16 @@ npm run build      # static output in dist/ (serve over HTTPS)
 ```
 
 ## Controls
-The tilt is absolute over ±60°: −60° → −100 %, 0° → neutral (50 % midpoint), +60° → +100 %, held at the
-extreme beyond ±60°. An ease-in-out curve (`MOTION.easing`: 'sine' | 'cubic' | 'linear') shapes the transition:
-soft out of and into the extremes, faster through upright.
+The front/back tilt is absolute: phone **upright** (perpendicular to the ground) = stato 1 (Figma "tilt +100"),
+**50° forward** (top away from you) = stato 2 ("tilt -100"); held beyond both ends (`MOTION.vertical`).
+An ease-in-out curve (`MOTION.easing`: 'sine' | 'cubic' | 'linear') shapes the transition: soft out of stato 1,
+faster mid-way, soft arrival at stato 2.
 
 | Input | Drives |
 |---|---|
-| Front/back tilt — 0° = phone **upright** (perpendicular to the ground); +60° = top tilted forward (away from you) → "tilt +100", −60° = tilted back → "tilt -100" | **both** the individual heights of the 8 wordmark rows **and** the shared gradient field |
+| Front/back tilt — upright = stato 1 ("tilt +100"), 50° forward = stato 2 ("tilt -100") | **both** the individual heights of the 8 wordmark rows **and** the shared gradient field |
 | Left/right tilt | currently disabled (restore in `Stage.jsx`: `draw(layoutRows(v), h)`) |
-| Desktop / no sensor: pointer Y | both effects |
+| Desktop / no sensor: pointer Y (top = stato 1, bottom = stato 2) | both effects |
 
 Both angles are computed from the direction of gravity in the phone (derived from β/γ), so they stay stable
 when the phone is upright, where the raw γ angle is degenerate and jumps. Lying flat, left/right equals γ.

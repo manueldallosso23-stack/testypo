@@ -60,18 +60,22 @@ export const ROWS = {
 
 /** Sensor mapping & smoothing */
 export const MOTION = {
-  /** degrees of front/back tilt from UPRIGHT for the full −100…+100 range
-   *  (+ = top tilted forward / away from the user) */
-  verticalRange: 60,
+  /**
+   * Front/back tilt → state (drives rows AND gradient).
+   * Angle in degrees from UPRIGHT (phone perpendicular to the ground),
+   * + = top tilted forward (away from the user).
+   * State: +1 = Figma "tilt +100" (stato 1), −1 = "tilt -100" (stato 2).
+   * Upright → stato 1; 50° forward → stato 2; held beyond both ends.
+   */
+  vertical: { fromAngle: 0, toAngle: 50, fromState: 1, toState: -1 },
   /** degrees of left/right tilt (from level) for the full −100…+100 range */
   horizontalRange: 60,
-  /** invert if a direction feels backwards on device */
-  invertVertical: false,
+  /** invert if the (currently disabled) left/right direction feels backwards */
   invertHorizontal: false,
   /**
    * Ease-in-out applied to the tilt → state curve (rows and gradient alike):
    * 'sine' (gentle), 'cubic' (stronger), 'linear' (off).
-   * Soft start from each extreme, faster through upright, soft arrival.
+   * Soft start from stato 1, faster mid-way, soft arrival at stato 2.
    */
   easing: 'sine',
   /** smoothing stiffness (1/s). Two cascaded stages → soft, no overshoot. */
