@@ -1,7 +1,9 @@
 /**
  * Produces two independent normalised control targets, each in [-1, 1]:
- *   h — left/right rotation → drives the shared gradient field AND the row heights
- *   v — front/back tilt (vs. calibrated rest pose) → currently unused
+ *   h — left/right rotation (γ, 0° = level)                 → shared gradient field
+ *   v — front/back tilt (β, 0° = calibrated rest pose)        → the 8 row heights
+ * Both are LINEAR over ±MOTION range degrees: −30° → −1, 0° → 0 (midpoint),
+ * +30° → +1, clamped beyond.
  *
  * Sources, in priority order:
  *   1. DeviceOrientation (requests permission on iOS via a user tap)
@@ -14,8 +16,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MOTION } from '../config/art.js';
 
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
-/** soft limit: linear around rest, eases into ±1 instead of a hard stop */
-const soft = (x) => Math.tanh(x * 1.15) / Math.tanh(1.15);
 
 const needsPermission = () =>
   typeof window !== 'undefined' &&
@@ -49,13 +49,12 @@ export function useMotionControls() {
   const onOrientation = useCallback((e) => {
     if (e.beta == null || e.gamma == null) return;
     const [vert, horiz] = remap(e.beta, e.gamma);
+    // rest pose = how the phone is held when motion starts (double-tap re-zeroes);
+    // fixed afterwards so a held tilt keeps its state
     if (rest.current == null) rest.current = vert;
-    // slowly re-centre the rest pose if the user holds the phone differently
-    // for a long time (very slow: does not fight intentional gestures)
-    rest.current += (vert - rest.current) * 0.0015;
 
-    let v = soft(clamp((vert - rest.current) / MOTION.verticalRange, -1.5, 1.5));
-    let h = soft(clamp(horiz / MOTION.horizontalRange, -1.5, 1.5));
+    let v = (vert - rest.current) / MOTION.verticalRange;
+    let h = horiz / MOTION.horizontalRange;
     if (MOTION.invertVertical) v = -v;
     if (MOTION.invertHorizontal) h = -h;
     target.current.v = clamp(v, -1, 1);

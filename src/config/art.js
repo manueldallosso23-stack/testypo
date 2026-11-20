@@ -45,8 +45,9 @@ export const GRADIENTS = {
  * normalisation), only its height differs. [top, height] in frame units,
  * listed in on-screen order, top row first.
  *
- * Left/right rotation h interpolates every row's top and height independently:
- * h = −1 (fully left) → left, h = +1 (fully right) → right, h = 0 → midpoint.
+ * FRONT/BACK tilt v interpolates every row's top and height independently:
+ * v = −1 → "tilt -100" (left list), v = +1 → "tilt +100" (right list),
+ * v = 0 (rest pose) → exact midpoint.
  * Every row always spans the full composition width.
  */
 export const ROWS = {
@@ -58,10 +59,10 @@ export const ROWS = {
 
 /** Sensor mapping & smoothing */
 export const MOTION = {
-  /** degrees of front/back tilt (from the calibrated rest pose) for full range */
-  verticalRange: 32,
-  /** degrees of left/right tilt for full range */
-  horizontalRange: 35,
+  /** degrees of front/back tilt (from the rest pose) for the full −100…+100 range */
+  verticalRange: 30,
+  /** degrees of left/right tilt (from level) for the full −100…+100 range */
+  horizontalRange: 30,
   /** invert if a direction feels backwards on device */
   invertVertical: false,
   invertHorizontal: false,

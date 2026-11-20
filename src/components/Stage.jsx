@@ -28,8 +28,8 @@ function useAnimationLoop(target, draw) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const { v, h } = smooth(target.current, dt);
-      // left/right rotation (h) → gradient field (unchanged) AND row heights
-      draw(layoutRows(h), h);
+      // front/back tilt (v) → row heights; left/right rotation (h) → gradient field
+      draw(layoutRows(v), h);
       raf = requestAnimationFrame(tick);
     };
     const onVis = () => {

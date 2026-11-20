@@ -2,8 +2,8 @@
  * Single-pass WebGL renderer.
  *
  * Left/right rotation → ONE motion value h ∈ [-1, 1] → ONE shared gradient field
- * (unchanged gradient logic). The same h also sets the individual heights of
- * the 8 wordmark rows (typography only, never x). Both surfaces read it through the Figma gradients, which are each
+ * (unchanged gradient logic). Front/back tilt independently sets the heights
+ * of the 8 wordmark rows (typography only, never x). Both surfaces read it through the Figma gradients, which are each
  * other's complement (stops reversed between the "tilt +100" and
  * "tilt -100" frames):
  *     t_s(y)      = 0.5 + h · (t(y) − 0.5)          shared field reading
@@ -183,13 +183,13 @@ export function computeFit(view) {
 }
 
 /**
- * Row layout for left/right rotation h ∈ [−1, 1]: every row's top and height
+ * Row layout for front/back tilt v ∈ [−1, 1]: every row's top and height
  * are interpolated independently between the two Figma frames
- * (h = −1 → "tilt -100", h = +1 → "tilt +100", h = 0 → exact midpoint).
+ * (v = −1 → "tilt -100", v = +1 → "tilt +100", v = 0 → exact midpoint).
  * Linear interpolation of two gap-free stackings stays gap/overlap-free.
  */
-export function layoutRows(h) {
-  const k = Math.min(1, Math.max(0, (h + 1) / 2));
+export function layoutRows(v) {
+  const k = Math.min(1, Math.max(0, (v + 1) / 2));
   const tops = new Float32Array(ROW_COUNT);
   const heights = new Float32Array(ROW_COUNT);
   for (let i = 0; i < ROW_COUNT; i++) {
