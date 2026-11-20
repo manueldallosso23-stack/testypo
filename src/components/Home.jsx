@@ -4,14 +4,27 @@ import { HOME } from '../config/art.js';
 
 /**
  * Home page — Figma frame "home page" (2013:3779), 378.7 × 821.
- * The artwork (title, character, stars, bottom block) is the Figma SVG export
- * src/assets/figma/home.svg; "tap to enable motion" is live text in the
+ * The artwork (title, character, stars, bottom block) is assembled from the
+ * Figma SVG exports in src/assets/figma/home/ at their Figma positions
+ * (HOME.parts); "tap to enable motion" is live text in the
  * Alpen-Trial Stencil Rounded Oblique font so it can blink.
  * The frame is contain-fitted (uniform scale, never distorted) and centred in
  * the safe area; the rest of the screen is the frame's black.
  */
-const artModules = import.meta.glob('../assets/figma/home.svg', { eager: true, query: '?url', import: 'default' });
-const homeArt = Object.values(artModules)[0] || null;
+const urls = import.meta.glob('../assets/figma/home/*.svg', { eager: true, query: '?url', import: 'default' });
+const raws = import.meta.glob('../assets/figma/home/*.svg', { eager: true, query: '?raw', import: 'default' });
+
+/** Parts that exist on disk, with their size read from the SVG root. */
+const PARTS = HOME.parts
+  .map((p) => {
+    const key = `../assets/figma/home/${p.file}`;
+    if (!urls[key]) return null;
+    const root = raws[key].match(/<svg[^>]*>/)[0];
+    const w = parseFloat(root.match(/\bwidth="([\d.]+)"/)[1]);
+    const h = parseFloat(root.match(/\bheight="([\d.]+)"/)[1]);
+    return { ...p, url: urls[key], w, h };
+  })
+  .filter(Boolean);
 
 function useFrameBox() {
   const [box, setBox] = useState(null);
@@ -41,7 +54,21 @@ export default function Home({ leaving, onStart }) {
     >
       {box && (
         <span className="home__frame" style={{ left: box.x, top: box.y, width: box.w, height: box.h }}>
-          {homeArt && <img className="home__art" src={homeArt} alt="" draggable="false" />}
+          {PARTS.map((p) => (
+            <img
+              key={p.file}
+              className="home__part"
+              src={p.url}
+              alt=""
+              draggable="false"
+              style={{
+                left: `${(p.x / HOME.frame.w) * 100}%`,
+                top: `${(p.y / HOME.frame.h) * 100}%`,
+                width: `${(p.w / HOME.frame.w) * 100}%`,
+                height: `${(p.h / HOME.frame.h) * 100}%`,
+              }}
+            />
+          ))}
           <span
             className="home__tap"
             style={{

@@ -9,7 +9,8 @@ npm run build      # static output in dist/ (serve over HTTPS)
 ```
 
 ## Flow
-1. **Home** (Figma frame "home page", 2013:3779): artwork `src/assets/figma/home.svg` (contain-fitted, never distorted)
+1. **Home** (Figma frame "home page", 2013:3779): artwork assembled from the Figma SVG exports in
+   `src/assets/figma/home/` at their Figma positions (`HOME.parts`), contain-fitted and never distorted,
    + "tap to enable motion" as live text in Alpen-Trial Stencil Rounded Oblique, blinking.
 2. **Tap** anywhere: motion permission is requested (iOS needs it inside the tap) and the whole home fades out.
 3. **Intro**: the gradient fades in from black, then the 8 IGNOTO rows fade in staggered, top → bottom.
