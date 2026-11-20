@@ -57,6 +57,22 @@ export const ROWS = {
   right: [[1, 30], [33, 47], [83, 54], [140, 71], [214, 85], [301, 122], [425, 197], [624, 197]],
 };
 
+/**
+ * Dithering layer (post-process inside the shader, on top of the gradients).
+ * Each surface's position along its own Figma gradient is quantised to
+ * `levels` steps with a static white-noise threshold per grain cell, so the
+ * output only ever uses colours of the existing gradients.
+ */
+export const DITHER = {
+  enabled: true,
+  /** grain cell size in CSS px (1 = finest; 2–3 = chunkier raster) */
+  cellSize: 1.5,
+  /** colour steps per gradient (fewer = more posterised) */
+  levels: 4,
+  /** noise amplitude in steps: 1 = classic dither, >1 = grain even in flat areas */
+  spread: 2.0,
+};
+
 /** Sensor mapping & smoothing */
 export const MOTION = {
   /** degrees of front/back tilt (from the rest pose) for the full −100…+100 range */

@@ -50,3 +50,16 @@ h = +1 reproduces "tilt +100", h = −1 "tilt -100", h = 0 is the exact 50 % mid
 
 Here `h` is the left/right rotation. The gradients are pinned to the composition frame (the safe area),
 so the changing row heights never move them.
+
+## Dithering layer
+A final shader pass gives the gradients a grainy, rasterised, posterised texture (`DITHER` in `src/config/art.js`).
+It quantises each surface's position **along its own Figma gradient** to a few steps using a static white-noise
+threshold per screen-space grain cell, so every output colour is still a colour of the existing gradients, the
+texture stays still while the tilt moves the gradients underneath, and background and lettering share the same
+grain (their reciprocal contrast is preserved). `enabled: false` restores the exact previous output.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `cellSize` | 1.5 | grain size in CSS px |
+| `levels` | 4 | colour steps per gradient (fewer = more posterised) |
+| `spread` | 2.0 | noise amplitude in steps (higher = rawer, less readable) |
