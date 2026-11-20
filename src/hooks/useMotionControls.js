@@ -1,7 +1,7 @@
 /**
  * Produces two independent normalised control targets, each in [-1, 1]:
- *   v — front/back tilt (vs. calibrated rest pose) → drives the shared gradient field
- *   h — left/right rotation                         → drives the vertical stretch
+ *   h — left/right rotation → drives the shared gradient field AND the row heights
+ *   v — front/back tilt (vs. calibrated rest pose) → currently unused
  *
  * Sources, in priority order:
  *   1. DeviceOrientation (requests permission on iOS via a user tap)

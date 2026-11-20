@@ -11,22 +11,24 @@ npm run build      # static output in dist/ (serve over HTTPS)
 ## Controls
 | Input | Drives |
 |---|---|
-| Phone left/right rotation (γ) | vertical stretch of the wordmark only: full left = 50 % of the safe height, level = 75 %, full right = 100 % |
-| Phone front/back tilt (β, vs. rest pose) | the shared gradient field only: back = "tilt -100", rest = 50 % midpoint, forward = "tilt +100" |
-| Desktop / no sensor: pointer X / Y | same two values |
-| Double-tap (sensor mode) | re-zero the front/back rest pose |
+| Phone left/right rotation (γ) | the shared gradient field (unchanged: left = "tilt -100", level = 50 % midpoint, right = "tilt +100") **and** the individual heights of the 8 wordmark rows |
+| Desktop / no sensor: pointer X | same |
+| Front/back tilt | currently unused |
 
-The wordmark always spans the full safe-area width and is never scaled horizontally; it stays centred
-vertically inside the safe area (notch / Dynamic Island / home indicator excluded).
+Each of the 8 IGNOTO rows always spans the full safe-area width (never scaled on x). Its top and height are
+interpolated independently between the two Figma frames (`ROWS` in `src/config/art.js`), so full left reproduces
+"tilt -100", full right reproduces "tilt +100", and level is the exact midpoint of every row. The composition
+frame (821 units) is mapped onto the safe-area height, so all 8 rows are always visible.
 
 iOS shows one "Tap to enable motion" button (required by Safari's permission API); nowhere else has any UI.
 
 ## Source design
-Figma "Crossfit-Team" → page "Test Cloude" (2005:2), frames **tilt +100** (2005:1698) and **tilt -100** (2005:2050).
+Figma "Crossfit-Team" → page "Test Cloude" (2005:2).
 
-- `src/assets/figma/tilt-minus-100.svg` — verbatim SVG export of frame 2005:2050 (checksum-verified against Figma).
-- `src/assets/typography.svg` — the lettering mask, derived by `npm run mask-svg` (drops the frame fill and turns the gradient fills to white; geometry untouched).
-- `src/config/art.js` — the Figma gradients (positions + stops) and the motion mapping.
+- `src/assets/figma/wordmark-row.svg` — verbatim SVG export of one "Livello_1" wordmark row (2009:2127),
+  checksum-verified against Figma. All 8 rows use this same vector (verified identical after normalisation).
+- Row layout (`ROWS`): measured from frames **tilt -100** (2009:2129) and **tilt +100** (2009:2102).
+- Gradients (`GRADIENTS`): from the original frames 2005:1698 / 2005:2050 — locked, unchanged.
 
 ## How the reciprocal gradient works
 The two Figma frames share geometry; "tilt -100" is "tilt +100" with every gradient's stops reversed.
@@ -42,6 +44,5 @@ h = +1 reproduces "tilt +100", h = −1 "tilt -100", h = 0 is the exact 50 % mid
 (background #250A24, lettering #4A1448). Renders at ±1 match Figma's own frame renders to ±1 RGB level
 (only anti-aliasing on letter edges differs).
 
-Here `h` is the **front/back** tilt. Left/right rotation `s` only sets the wordmark height,
-`minHeight + (1 − minHeight) · (s + 1)/2` of the safe area (`TYPOGRAPHY.minHeight`, default 0.5), pivoted at
-the vertical centre. The gradients are pinned to the safe area, so stretching never moves them.
+Here `h` is the left/right rotation. The gradients are pinned to the composition frame (the safe area),
+so the changing row heights never move them.

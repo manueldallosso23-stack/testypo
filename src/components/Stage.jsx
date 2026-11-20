@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { createRenderer, computeFit, svgSize, stretchable, toScaleY } from '../gl/renderer.js';
+import { createRenderer, computeFit, stretchable, layoutRows } from '../gl/renderer.js';
 import { cssGradient } from '../gl/field.js';
 import { measureViewport, onViewportChange } from '../gl/viewport.js';
-import { MOTION, TYPOGRAPHY } from '../config/art.js';
+import { MOTION } from '../config/art.js';
 
 
 /**
@@ -28,8 +28,8 @@ function useAnimationLoop(target, draw) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const { v, h } = smooth(target.current, dt);
-      // left/right rotation (h) → vertical stretch; front/back tilt (v) → gradient
-      draw(toScaleY(h), v);
+      // left/right rotation (h) → gradient field (unchanged) AND row heights
+      draw(layoutRows(h), h);
       raf = requestAnimationFrame(tick);
     };
     const onVis = () => {
@@ -76,23 +76,27 @@ function GLStage({ svgText, target, onFail }) {
 function CSSStage({ svgText, target }) {
   const bgRef = useRef(null);
   const fgRef = useRef(null);
-  const svg = useRef(svgSize(svgText)).current;
   const maskUrl = useRef(`url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(stretchable(svgText))}")`).current;
 
-  const draw = useRef((scaleY, g) => {
+  const draw = useRef((rows, h) => {
     const view = measureViewport();
     const H = view.H;
-    const fit = computeFit(view, svg);
-    const bg = cssGradient('background', g, fit, H);
-    const fg = cssGradient('typography', g, fit, H);
-    const ay = fit.oy + fit.dh * TYPOGRAPHY.anchorY;
-    const h = fit.dh * scaleY;
+    const fit = computeFit(view);
+    const bg = cssGradient('background', h, fit, H);
+    const fg = cssGradient('typography', h, fit, H);
     bgRef.current.style.background = bg;
     const s = fgRef.current.style;
     s.background = fg;
-    s.webkitMaskImage = s.maskImage = maskUrl;
-    s.webkitMaskSize = s.maskSize = `${fit.dw}px ${h}px`;
-    s.webkitMaskPosition = s.maskPosition = `${fit.ox}px ${ay - h * TYPOGRAPHY.anchorY}px`;
+    // one mask layer per wordmark row: full width, its own top & height
+    const sizes = [];
+    const positions = [];
+    for (let i = 0; i < rows.tops.length; i++) {
+      sizes.push(`${fit.dw}px ${rows.heights[i] * fit.sy}px`);
+      positions.push(`${fit.ox}px ${fit.oy + rows.tops[i] * fit.sy}px`);
+    }
+    s.webkitMaskImage = s.maskImage = Array(rows.tops.length).fill(maskUrl).join(',');
+    s.webkitMaskSize = s.maskSize = sizes.join(',');
+    s.webkitMaskPosition = s.maskPosition = positions.join(',');
   }).current;
   useAnimationLoop(target, draw);
 

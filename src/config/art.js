@@ -1,7 +1,8 @@
 /**
  * ART DIRECTION CONFIG — transcribed from Figma
  * File "Crossfit-Team" (ed4xyxEfc0qkQlecHM9PAg), page "Test Cloude" (2005:2)
- *   frame "tilt +100" (2005:1698)  ·  frame "tilt -100" (2005:2050)
+ *   gradients: frames "tilt +100" (2005:1698) · "tilt -100" (2005:2050)
+ *   wordmark rows: updated frames "tilt +100" (2009:2102) · "tilt -100" (2009:2129)
  *
  * All coordinates are Figma frame units (y down), frame = 378.701 × 821.
  */
@@ -38,19 +39,21 @@ export const GRADIENTS = {
 };
 
 /**
- * Typography layout & stretch (LEFT/RIGHT rotation).
+ * The 8 IGNOTO wordmark rows — measured from the updated Figma frames
+ * "tilt -100" (2009:2129) and "tilt +100" (2009:2102). Each row is a 379-wide
+ * "Livello_1" frame holding the same wordmark vector (verified identical after
+ * normalisation), only its height differs. [top, height] in frame units,
+ * listed in on-screen order, top row first.
  *
- * The wordmark always spans the full safe-area WIDTH (never scaled on x).
- * Its height is a fraction of the safe-area height:
- *   heightFraction = minHeight + (1 − minHeight) · (s + 1) / 2,  s ∈ [−1, 1]
- *   s = −1 (rotated fully left)  → minHeight   (compressed)
- *   s = +1 (rotated fully right) → 1.0         (all rows fill the safe height)
- *   s =  0 (level)               → exact midpoint
- * Vertical pivot anchorY (0.5 = centred), so the layout stays centred.
+ * Left/right rotation h interpolates every row's top and height independently:
+ * h = −1 (fully left) → left, h = +1 (fully right) → right, h = 0 → midpoint.
+ * Every row always spans the full composition width.
  */
-export const TYPOGRAPHY = {
-  minHeight: 0.5,
-  anchorY: 0.5,
+export const ROWS = {
+  /** frame "tilt -100" — all gaps 2 */
+  left: [[1, 197], [200, 197], [399, 122], [523, 85], [610, 71], [683, 54], [739, 47], [788, 30]],
+  /** frame "tilt +100" — gaps 2–3 as drawn */
+  right: [[1, 30], [33, 47], [83, 54], [140, 71], [214, 85], [301, 122], [425, 197], [624, 197]],
 };
 
 /** Sensor mapping & smoothing */

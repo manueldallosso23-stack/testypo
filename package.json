@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "mask-svg": "node scripts/make-mask-svg.mjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.3.1",

@@ -1,9 +1,9 @@
 /**
  * Single-pass WebGL renderer.
  *
- * Front/back tilt → ONE motion value g ∈ [-1, 1] → ONE shared gradient field.
- * Left/right rotation → vertical stretch of the lettering only (never x).
- * Both surfaces read it through the Figma gradients, which are each
+ * Left/right rotation → ONE motion value h ∈ [-1, 1] → ONE shared gradient field
+ * (unchanged gradient logic). The same h also sets the individual heights of
+ * the 8 wordmark rows (typography only, never x). Both surfaces read it through the Figma gradients, which are each
  * other's complement (stops reversed between the "tilt +100" and
  * "tilt -100" frames):
  *     t_s(y)      = 0.5 + h · (t(y) − 0.5)          shared field reading
@@ -11,10 +11,18 @@
  *     typography  = rampFg( t_s of the Union gradient  )
  * h = +1 → frame "tilt +100", h = −1 → "tilt -100", h = 0 → exact 50 % midpoint.
  *
- * The gradients are pinned to the safe area (frame space at full height);
- * only the lettering mask is scaled on y, so stretching never moves them.
+ * The gradients are pinned to the composition frame (= safe area); only the
+ * lettering coverage changes with the row layout, so it never moves them.
+ *
+ * Lettering: the 8 rows are the SAME Figma wordmark (verified), each drawn at
+ * full width with its own interpolated top/height (see layoutRows). The
+ * wordmark is rasterised into a vertical "mip" atlas (one level per halving
+ * of height, each rendered from the vector) so short rows stay crisp.
  */
-import { GRADIENTS, TYPOGRAPHY, FRAME } from '../config/art.js';
+import { GRADIENTS, ROWS, FRAME } from '../config/art.js';
+
+const ROW_COUNT = 8;
+const LEVELS = 6;
 
 const STOPS = 4; // max stops per ramp (shorter ramps are padded)
 
@@ -28,8 +36,12 @@ precision highp float;
 
 uniform vec2  uRes;                 // drawing-buffer size (px)
 uniform vec4  uFit;                 // screenUV -> frameUV : uv*xy + zw
-uniform float uScaleY;              // vertical scale of the lettering (0..1)
-uniform float uAnchorY;             // pivot of the scale, frame UV
+uniform float uRowTop[${ROW_COUNT}];         // row tops    (Figma units)
+uniform float uRowH[${ROW_COUNT}];           // row heights (Figma units)
+uniform float uPxPerUnit;           // device px per Figma unit (vertical)
+uniform float uLvlOff[${LEVELS}];          // atlas v offset of each level
+uniform float uLvlH[${LEVELS}];            // atlas v height of each level
+uniform float uLvlPx[${LEVELS}];           // pixel height of each level
 uniform float uH;                   // shared motion value, -1..1
 uniform float uFrameH;              // frame height (Figma units)
 uniform vec4  uBgSpan;              // background y0, y1   | typography y0, y1
@@ -56,9 +68,30 @@ float hash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-float mask(vec2 uv) {
-  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
-  return texture2D(uMask, uv).a;
+// coverage of one wordmark row at (u, t) — t ∈ [0,1) inside the row —
+// blending the two atlas levels closest to the row's on-screen height
+float sampleRow(float u, float t, float rowPx) {
+  float lvl = clamp(log2(uLvlPx[0] / max(rowPx, 1.0)), 0.0, ${LEVELS - 1}.0);
+  float m = 0.0;
+  for (int j = 0; j < ${LEVELS}; j++) {
+    float w = max(0.0, 1.0 - abs(lvl - float(j)));
+    if (w > 0.0) {
+      float hp = 0.5 / uLvlPx[j];
+      float v = uLvlOff[j] + clamp(t, hp, 1.0 - hp) * uLvlH[j];
+      m += w * texture2D(uMask, vec2(u, v)).a;
+    }
+  }
+  return m;
+}
+
+// coverage of the whole 8-row composition at frame position (u, y)
+float letters(float u, float y) {
+  if (u < 0.0 || u > 1.0) return 0.0;
+  for (int i = 0; i < ${ROW_COUNT}; i++) {
+    float t = (y - uRowTop[i]) / uRowH[i];
+    if (t >= 0.0 && t < 1.0) return sampleRow(u, t, uRowH[i] * uPxPerUnit);
+  }
+  return 0.0;                                   // gap between rows
 }
 
 void main() {
@@ -73,14 +106,10 @@ void main() {
   vec3 bg = rampBg(0.5 + uH * (tBg - 0.5));
   vec3 fg = rampFg(0.5 + uH * (tFg - 0.5));
 
-  // ---- lettering coverage (scaleY applied on y only; x never scaled) ----
-  vec2 suv = fuv;
-  suv.y = uAnchorY + (suv.y - uAnchorY) / uScaleY;
-  // 4-tap vertical box filter across the pixel footprint: clean edges
-  // when the lettering is compressed.
-  float fy = uFit.y / (uRes.y * uScaleY);
-  float m = 0.25 * (mask(suv + vec2(0.0, -0.375 * fy)) + mask(suv + vec2(0.0, -0.125 * fy)) +
-                    mask(suv + vec2(0.0,  0.125 * fy)) + mask(suv + vec2(0.0,  0.375 * fy)));
+  // ---- lettering: 8 rows, full width, individual heights (x never scaled) ----
+  // two vertical sub-samples smooth the row edges (rows clip their wordmark)
+  float dy = 0.25 / uPxPerUnit;
+  float m = 0.5 * (letters(fuv.x, y - dy) + letters(fuv.x, y + dy));
 
   vec3 col = mix(bg, fg, m);
   col += (hash(frag) - 0.5) / 255.0;       // dither: no banding in dark ramps
@@ -103,58 +132,73 @@ function compile(gl, type, src) {
   return s;
 }
 
-/** Parse the SVG's intrinsic size from viewBox (fallback width/height). */
-export function svgSize(svgText) {
-  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-  const el = doc.documentElement;
-  const vb = el.getAttribute('viewBox');
-  if (vb) {
-    const [, , w, h] = vb.split(/[\s,]+/).map(Number);
-    if (w > 0 && h > 0) return { w, h };
-  }
-  return { w: parseFloat(el.getAttribute('width')) || 1, h: parseFloat(el.getAttribute('height')) || 1 };
-}
-
 /** Allow non-uniform scaling of the artwork (full-width frame, vertical stretch). */
 export function stretchable(svgText) {
   return svgText.replace(/<svg\b([^>]*?)\s*preserveAspectRatio="[^"]*"/, '<svg$1')
     .replace(/<svg\b/, '<svg preserveAspectRatio="none"');
 }
 
-/** Rasterise the vector SVG at a given pixel size (vector → crisp). */
-async function rasterise(svgText, w, h) {
+/**
+ * Rasterise the wordmark (vector → crisp at every size) into a vertical
+ * level atlas: level k is the full-width wordmark at height level0Px / 2^k,
+ * stacked top to bottom with transparent padding between levels.
+ */
+async function rasteriseAtlas(svgText, w, level0Px) {
   const url = URL.createObjectURL(new Blob([stretchable(svgText)], { type: 'image/svg+xml' }));
   try {
     const img = new Image();
     img.decoding = 'async';
     img.src = url;
     await img.decode();
+    const PAD = 4;
+    const levels = [];
+    let y = 0;
+    for (let k = 0; k < LEVELS; k++) {
+      const hpx = Math.max(2, Math.round(level0Px / 2 ** k));
+      levels.push({ y, h: hpx });
+      y += hpx + PAD;
+    }
     const c = document.createElement('canvas');
     c.width = w;
-    c.height = h;
-    c.getContext('2d').drawImage(img, 0, 0, w, h);
-    return c;
+    c.height = y;
+    const ctx = c.getContext('2d');
+    for (const l of levels) ctx.drawImage(img, 0, l.y, w, l.h);
+    return { canvas: c, levels, height: y };
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
 /**
- * Frame placement: the Figma frame is mapped onto the whole safe area —
- * full width always, full height at maximum stretch. The vertical stretch
- * (uScaleY ≤ 1) only ever shrinks it, so nothing can leave the safe area.
+ * Composition frame placement: the Figma frame (378.7 × 821) is mapped onto
+ * the whole safe area — every row spans the full width; the frame's height
+ * spans the safe height. Both Figma states fit inside 0…821, so every
+ * interpolated layout does too: nothing can leave the safe area.
  *   view = { W, H, safe: { x, y, w, h } }   (CSS px)
- * sy = CSS px per Figma unit vertically (used to place the gradients).
+ * sy = CSS px per Figma unit vertically (also places the gradients).
  */
-export function computeFit(view, svg) {
+export function computeFit(view) {
   const { safe } = view;
-  return { dw: safe.w, dh: safe.h, ox: safe.x, oy: safe.y, sy: safe.h / svg.h };
+  return { dw: safe.w, dh: safe.h, ox: safe.x, oy: safe.y, sy: safe.h / FRAME.h };
 }
 
-/** s ∈ [−1, 1] (left/right rotation) → height fraction of the safe area. */
-export function toScaleY(s) {
-  const k = Math.min(1, Math.max(0, (s + 1) / 2));
-  return TYPOGRAPHY.minHeight + (1 - TYPOGRAPHY.minHeight) * k;
+/**
+ * Row layout for left/right rotation h ∈ [−1, 1]: every row's top and height
+ * are interpolated independently between the two Figma frames
+ * (h = −1 → "tilt -100", h = +1 → "tilt +100", h = 0 → exact midpoint).
+ * Linear interpolation of two gap-free stackings stays gap/overlap-free.
+ */
+export function layoutRows(h) {
+  const k = Math.min(1, Math.max(0, (h + 1) / 2));
+  const tops = new Float32Array(ROW_COUNT);
+  const heights = new Float32Array(ROW_COUNT);
+  for (let i = 0; i < ROW_COUNT; i++) {
+    const [t0, h0] = ROWS.left[i];
+    const [t1, h1] = ROWS.right[i];
+    tops[i] = t0 + (t1 - t0) * k;
+    heights[i] = h0 + (h1 - h0) * k;
+  }
+  return { tops, heights };
 }
 
 /** Pad a stop list to STOPS entries → flat [r,g,b,...] and positions. */
@@ -178,7 +222,6 @@ export function createRenderer(canvas, svgText) {
   });
   if (!gl) return null;
 
-  const svg = svgSize(svgText);
   const prog = gl.createProgram();
   gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VERT));
   gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FRAG));
@@ -195,8 +238,8 @@ export function createRenderer(canvas, svgText) {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const U = {};
-  for (const n of ['uRes', 'uFit', 'uScaleY', 'uAnchorY', 'uH', 'uFrameH', 'uBgSpan',
-    'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask']) U[n] = gl.getUniformLocation(prog, n);
+  for (const n of ['uRes', 'uFit', 'uRowTop', 'uRowH', 'uPxPerUnit', 'uLvlOff', 'uLvlH', 'uLvlPx',
+    'uH', 'uFrameH', 'uBgSpan', 'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask']) U[n] = gl.getUniformLocation(prog, n);
 
   // ---- static uniforms from the Figma config ----
   const bg = rampUniforms(GRADIENTS.background.stops);
@@ -208,7 +251,6 @@ export function createRenderer(canvas, svgText) {
   gl.uniform4f(U.uBgSpan, GRADIENTS.background.y0, GRADIENTS.background.y1,
     GRADIENTS.typography.y0, GRADIENTS.typography.y1);
   gl.uniform1f(U.uFrameH, FRAME.h);
-  gl.uniform1f(U.uAnchorY, TYPOGRAPHY.anchorY);
 
   // mask texture
   const tex = gl.createTexture();
@@ -236,26 +278,33 @@ export function createRenderer(canvas, svgText) {
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.uniform2f(U.uRes, canvas.width, canvas.height);
 
-    const fit = computeFit(view, svg);
-    // screen uv (0..1) -> svg uv (0..1)
+    const fit = computeFit(view);
+    // screen uv (0..1) -> frame uv (0..1)
     gl.uniform4f(U.uFit, w / fit.dw, h / fit.dh, -fit.ox / fit.dw, -fit.oy / fit.dh);
+    const pxPerUnit = fit.sy * dpr;
+    gl.uniform1f(U.uPxPerUnit, pxPerUnit);
 
-    // largest on-screen size is scaleY = 1 → rasterise at exactly that
+    // level 0 = tallest row height that can occur on screen
+    const tallest = Math.max(...ROWS.left.map((r) => r[1]), ...ROWS.right.map((r) => r[1]));
     const tw = Math.min(maxTex, Math.round(fit.dw * dpr));
-    const th = Math.min(maxTex, Math.round(fit.dh * dpr));
+    const level0 = Math.min(maxTex / 2.2, Math.ceil(tallest * pxPerUnit));
     const token = ++rasterToken;
-    const c = await rasterise(svgText, tw, th);
+    const atlas = await rasteriseAtlas(svgText, tw, level0);
     if (token !== rasterToken || gl.isContextLost()) return;
+    gl.uniform1fv(U.uLvlOff, atlas.levels.map((l) => l.y / atlas.height));
+    gl.uniform1fv(U.uLvlH, atlas.levels.map((l) => l.h / atlas.height));
+    gl.uniform1fv(U.uLvlPx, atlas.levels.map((l) => l.h));
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas.canvas);
   }
 
-  /** scaleY from the left/right rotation, g (−1..1) from the front/back tilt */
-  function render(scaleY, g) {
-    gl.uniform1f(U.uScaleY, scaleY);
-    gl.uniform1f(U.uH, g);
+  /** rows = layoutRows(h) for the typography; h (−1..1) for the gradient field */
+  function render(rows, h) {
+    gl.uniform1fv(U.uRowTop, rows.tops);
+    gl.uniform1fv(U.uRowH, rows.heights);
+    gl.uniform1f(U.uH, h);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
