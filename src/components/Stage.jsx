@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRenderer, computeFit, svgSize, stretchable } from '../gl/renderer.js';
 import { cssGradient } from '../gl/field.js';
+import { measureViewport, onViewportChange } from '../gl/viewport.js';
 import { MOTION, TYPOGRAPHY } from '../config/art.js';
 
 /** v ∈ [-1, 1] → scaleX; v = 0 is the untouched Figma artwork (midpoint). */
@@ -51,17 +52,14 @@ function GLStage({ svgText, target, onFail }) {
     let r = null;
     try { r = createRenderer(canvas, svgText); } catch (e) { console.error(e); }
     if (!r) { onFail(); return undefined; }
-    const resize = () => r.resize(window.innerWidth, window.innerHeight, Math.min(window.devicePixelRatio || 1, 2));
+    const resize = () => r.resize(measureViewport(), Math.min(window.devicePixelRatio || 1, 2));
     resize();
-    let t = 0;
-    const onResize = () => { clearTimeout(t); t = setTimeout(resize, 120); };
-    window.addEventListener('resize', onResize);
+    const offViewport = onViewportChange(resize);
     const onLost = (e) => { e.preventDefault(); onFail(); };
     canvas.addEventListener('webglcontextlost', onLost);
     setRenderer(r);
     return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', onResize);
+      offViewport();
       canvas.removeEventListener('webglcontextlost', onLost);
       r.dispose();
     };
@@ -83,8 +81,9 @@ function CSSStage({ svgText, target }) {
   const maskUrl = useRef(`url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(stretchable(svgText))}")`).current;
 
   const draw = useRef((scaleX, h) => {
-    const W = window.innerWidth, H = window.innerHeight;
-    const fit = computeFit(W, H, svg);
+    const view = measureViewport();
+    const H = view.H;
+    const fit = computeFit(view, svg);
     const bg = cssGradient('background', h, fit, H);
     const fg = cssGradient('typography', h, fit, H);
     const ax = fit.ox + fit.dw * TYPOGRAPHY.anchorX;

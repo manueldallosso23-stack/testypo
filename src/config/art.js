@@ -39,10 +39,8 @@ export const GRADIENTS = {
 
 /** Typography layout & scaling (vertical tilt) */
 export const TYPOGRAPHY = {
-  /** 'cover' fills the screen like the Figma frame on phones; on wide
-   *  screens (aspect > containAbove) the frame is contained instead. */
-  fit: 'cover',
-  containAbove: 0.85,
+  /* Fit: always CONTAIN inside the safe area, with width reserved for the
+     maximum stretch (1 + scaleAmount), so nothing is ever cropped. */
   /** Horizontal pivot of scaleX in frame space (0.5 = centre). */
   anchorX: 0.5,
   /**

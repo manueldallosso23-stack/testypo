@@ -138,13 +138,21 @@ async function rasterise(svgText, w, h) {
   }
 }
 
-/** Fit of the SVG frame into the viewport ('cover' or 'contain'). */
-export function computeFit(viewW, viewH, svg) {
-  const contain = TYPOGRAPHY.fit === 'contain' || viewW / viewH > TYPOGRAPHY.containAbove;
-  const scale = contain ? Math.min(viewW / svg.w, viewH / svg.h) : Math.max(viewW / svg.w, viewH / svg.h);
+/**
+ * CONTAIN fit of the Figma frame inside the safe area.
+ * Width is budgeted for the MAXIMUM horizontal stretch, so the lettering can
+ * never overflow the screen at any tilt; the frame is centred in the safe area.
+ *   view = { W, H, safe: { x, y, w, h } }   (CSS px)
+ */
+export function computeFit(view, svg) {
+  const maxScale = 1 + TYPOGRAPHY.scaleAmount;
+  // widest extent either side of the pivot at max stretch, in frame widths
+  const widthFactor = 2 * Math.max(TYPOGRAPHY.anchorX, 1 - TYPOGRAPHY.anchorX) * maxScale;
+  const { safe } = view;
+  const scale = Math.min(safe.w / (svg.w * widthFactor), safe.h / svg.h);
   const dw = svg.w * scale;
   const dh = svg.h * scale;
-  return { scale, dw, dh, ox: (viewW - dw) / 2, oy: (viewH - dh) / 2 };
+  return { scale, dw, dh, ox: safe.x + (safe.w - dw) / 2, oy: safe.y + (safe.h - dh) / 2 };
 }
 
 /** Pad a stop list to STOPS entries → flat [r,g,b,...] and positions. */
@@ -217,7 +225,8 @@ export function createRenderer(canvas, svgText) {
   let cssH = 1;
 
   /** Resize drawing buffer & re-rasterise the lettering at screen resolution. */
-  async function resize(w, h, dpr) {
+  async function resize(view, dpr) {
+    const { W: w, H: h } = view;
     cssW = w;
     cssH = h;
     canvas.width = Math.round(w * dpr);
@@ -225,7 +234,7 @@ export function createRenderer(canvas, svgText) {
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.uniform2f(U.uRes, canvas.width, canvas.height);
 
-    const fit = computeFit(w, h, svg);
+    const fit = computeFit(view, svg);
     // screen uv (0..1) -> svg uv (0..1)
     gl.uniform4f(U.uFit, w / fit.dw, h / fit.dh, -fit.ox / fit.dw, -fit.oy / fit.dh);
 
