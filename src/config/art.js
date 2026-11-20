@@ -118,8 +118,8 @@ export const MOTION = {
    */
   vertical: { fromAngle: -20, toAngle: 50, fromState: 1, toState: -1 },
   /** HORIZONTAL (left/right) tilt → gradients: degrees from level for the
-   *  full −100…+100 range (0° = 50 %, ±70° = "tilt ±100") */
-  horizontalRange: 70,
+   *  full −100…+100 range (0° = 50 %, ±20° = "tilt ±100") */
+  horizontalRange: 20,
   /** invert if the left/right direction feels backwards */
   invertHorizontal: false,
   /**

@@ -28,7 +28,7 @@ faster mid-way, soft arrival at stato 2.
 | Input | Drives |
 |---|---|
 | Vertical (front/back) tilt — 20° backward = stato 1 ("tilt +100"), 50° forward = stato 2 ("tilt -100") | the individual heights of the 8 wordmark rows |
-| Horizontal (left/right) tilt — level = 50 % midpoint, ±70° = "tilt ±100" | the shared gradient field |
+| Horizontal (left/right) tilt — level = 50 % midpoint, ±20° = "tilt ±100" | the shared gradient field |
 | Desktop / no sensor: pointer Y / X | rows / gradient |
 
 Both angles are computed from the direction of gravity in the phone (derived from β/γ), so they stay stable
