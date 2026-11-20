@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import Stage from './components/Stage.jsx';
 import { useMotionControls } from './hooks/useMotionControls.js';
 // The IGNOTO wordmark — verbatim Figma export of one "Livello_1" row (2009:2127),
@@ -6,18 +5,10 @@ import { useMotionControls } from './hooks/useMotionControls.js';
 import typographySvg from './assets/figma/wordmark-row.svg?raw';
 
 export default function App() {
-  const { target, mode, requestPermission, recalibrate } = useMotionControls();
-  const lastTap = useRef(0);
-
-  // double-tap re-centres the vertical rest pose (sensor mode only)
-  const onPointerUp = () => {
-    const now = performance.now();
-    if (mode === 'sensor' && now - lastTap.current < 300) recalibrate();
-    lastTap.current = now;
-  };
+  const { target, mode, requestPermission } = useMotionControls();
 
   return (
-    <main className="app" onPointerUp={onPointerUp}>
+    <main className="app">
       <Stage svgText={typographySvg} target={target} />
       {mode === 'needs-permission' && (
         <button type="button" className="gate" onClick={requestPermission}>

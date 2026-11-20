@@ -1,9 +1,15 @@
 /**
  * Produces two independent normalised control targets, each in [-1, 1]:
- *   h — left/right rotation (γ, 0° = level)                 → shared gradient field
- *   v — front/back tilt (β, 0° = calibrated rest pose)        → the 8 row heights
+ *   v — front/back tilt, 0° = phone UPRIGHT (perpendicular to the ground),
+ *       + = top tilted forward (away from the user)          → the 8 row heights
+ *   h — left/right tilt, 0° = level, + = right side down      → shared gradient field
  * Both are LINEAR over ±MOTION range degrees: −30° → −1, 0° → 0 (midpoint),
  * +30° → +1, clamped beyond.
+ *
+ * Both angles are derived from the direction of gravity in the device frame
+ * (computed from β/γ), not from raw β/γ: near upright β ≈ 90° the Euler angle γ
+ * is degenerate and jumps, whereas the gravity vector stays continuous in
+ * every pose. Lying flat, h equals γ exactly (same as before).
  *
  * Sources, in priority order:
  *   1. DeviceOrientation (requests permission on iOS via a user tap)
@@ -29,14 +35,33 @@ function screenAngle() {
   return ((a % 360) + 360) % 360;
 }
 
-/** Device beta/gamma → (vertical, horizontal) tilt relative to the screen. */
-function remap(beta, gamma) {
-  switch (screenAngle()) {
-    case 90: return [gamma * -1, beta];
-    case 270: return [gamma, -beta];
-    case 180: return [-beta, -gamma];
-    default: return [beta, gamma];
+const RAD = Math.PI / 180;
+
+/**
+ * Device β/γ → (pitch, roll) in degrees, relative to the screen.
+ * u = world "up" expressed in device coordinates (x right, y top, z out of
+ * the screen), from the W3C Z-X'-Y'' Euler order:
+ *   u = (−sinγ·cosβ, sinβ, cosγ·cosβ)
+ * pitch = atan2(u.z, u.y): 0 upright, +30 with the top tilted 30° away.
+ * roll  = asin(−u.x):     0 level, + right side down (= γ when lying flat).
+ */
+function tiltAngles(beta, gamma) {
+  const b = beta * RAD;
+  const g = gamma * RAD;
+  let ux = -Math.sin(g) * Math.cos(b);
+  let uy = Math.sin(b);
+  const uz = Math.cos(g) * Math.cos(b);
+  // landscape: rotate into screen coordinates
+  const a = screenAngle() * RAD;
+  if (a) {
+    const x = ux * Math.cos(a) - uy * Math.sin(a);
+    const y = ux * Math.sin(a) + uy * Math.cos(a);
+    ux = x;
+    uy = y;
   }
+  const pitch = Math.atan2(uz, uy) / RAD;
+  const roll = Math.asin(clamp(-ux, -1, 1)) / RAD;
+  return [pitch, roll];
 }
 
 export function useMotionControls() {
@@ -44,17 +69,12 @@ export function useMotionControls() {
   // 'pointer' | 'needs-permission' | 'starting' | 'sensor'
   const [mode, setMode] = useState(() => (needsPermission() ? 'needs-permission' : 'pointer'));
   const sensorLive = useRef(false);
-  const rest = useRef(null); // calibrated rest pose for vertical tilt
 
   const onOrientation = useCallback((e) => {
     if (e.beta == null || e.gamma == null) return;
-    const [vert, horiz] = remap(e.beta, e.gamma);
-    // rest pose = how the phone is held when motion starts (double-tap re-zeroes);
-    // fixed afterwards so a held tilt keeps its state
-    if (rest.current == null) rest.current = vert;
-
-    let v = (vert - rest.current) / MOTION.verticalRange;
-    let h = horiz / MOTION.horizontalRange;
+    const [pitch, roll] = tiltAngles(e.beta, e.gamma);
+    let v = pitch / MOTION.verticalRange;   // absolute: upright = 0
+    let h = roll / MOTION.horizontalRange;
     if (MOTION.invertVertical) v = -v;
     if (MOTION.invertHorizontal) h = -h;
     target.current.v = clamp(v, -1, 1);
@@ -86,11 +106,6 @@ export function useMotionControls() {
     }
   }, [startSensor]);
 
-  /** Re-zero the vertical rest pose (double tap). */
-  const recalibrate = useCallback(() => {
-    rest.current = null;
-  }, []);
-
   useEffect(() => {
     if (!needsPermission() && window.isSecureContext !== false) startSensor();
     return () => window.removeEventListener('deviceorientation', onOrientation);
@@ -113,5 +128,5 @@ export function useMotionControls() {
     };
   }, []);
 
-  return { target, mode, requestPermission, recalibrate };
+  return { target, mode, requestPermission };
 }

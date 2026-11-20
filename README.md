@@ -9,15 +9,17 @@ npm run build      # static output in dist/ (serve over HTTPS)
 ```
 
 ## Controls
-Both axes are independent and linear over ±30°: −30° → −100 %, 0° → neutral (50 % midpoint), +30° → +100 %,
-held at the extreme beyond ±30°.
+Both axes are independent, absolute and linear over ±30°: −30° → −100 %, 0° → neutral (50 % midpoint),
++30° → +100 %, held at the extreme beyond ±30°.
 
 | Input | Drives |
 |---|---|
-| Front/back tilt (β, 0° = how the phone is held when motion starts) | the individual heights of the 8 wordmark rows: −30° = "tilt -100", +30° = "tilt +100" |
-| Left/right rotation (γ, 0° = level) | the shared gradient field (unchanged visuals): −30° = "tilt -100", +30° = "tilt +100" |
+| Front/back tilt — 0° = phone **upright** (perpendicular to the ground); +30° = top tilted forward (away from you) → "tilt +100", −30° = tilted back → "tilt -100" | the individual heights of the 8 wordmark rows |
+| Left/right tilt — 0° = level; + = right side down | the shared gradient field (unchanged visuals) |
 | Desktop / no sensor: pointer Y / X | rows / gradient |
-| Double-tap (sensor mode) | re-zero the front/back rest pose |
+
+Both angles are computed from the direction of gravity in the phone (derived from β/γ), so they stay stable
+when the phone is upright, where the raw γ angle is degenerate and jumps. Lying flat, left/right equals γ.
 
 Each of the 8 IGNOTO rows always spans the full safe-area width (never scaled on x). Its top and height are
 interpolated independently between the two Figma frames (`ROWS` in `src/config/art.js`), so full left reproduces

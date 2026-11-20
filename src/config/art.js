@@ -47,7 +47,8 @@ export const GRADIENTS = {
  *
  * FRONT/BACK tilt v interpolates every row's top and height independently:
  * v = −1 → "tilt -100" (left list), v = +1 → "tilt +100" (right list),
- * v = 0 (rest pose) → exact midpoint.
+ * v = 0 (phone upright, perpendicular to the ground) → exact midpoint;
+ * v = +1 at 30° forward (top away from the user), −1 at 30° backward.
  * Every row always spans the full composition width.
  */
 export const ROWS = {
@@ -59,7 +60,8 @@ export const ROWS = {
 
 /** Sensor mapping & smoothing */
 export const MOTION = {
-  /** degrees of front/back tilt (from the rest pose) for the full −100…+100 range */
+  /** degrees of front/back tilt from UPRIGHT for the full −100…+100 range
+   *  (+ = top tilted forward / away from the user) */
   verticalRange: 30,
   /** degrees of left/right tilt (from level) for the full −100…+100 range */
   horizontalRange: 30,
