@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createRenderer, computeFit, stretchable, layoutRows } from '../gl/renderer.js';
 import { cssGradient } from '../gl/field.js';
 import { measureViewport, onViewportChange } from '../gl/viewport.js';
-import { MOTION } from '../config/art.js';
+import { MOTION, INTRO } from '../config/art.js';
 
 
 /**
@@ -34,7 +34,25 @@ function makeSmoother() {
   };
 }
 
-function useAnimationLoop(target, draw) {
+const smoothstep = (x) => {
+  const k = Math.min(1, Math.max(0, x));
+  return k * k * (3 - 2 * k);
+};
+/**
+ * Entrance: background fades in from black, then the 8 rows fade in one
+ * after another, top → bottom. Before the intro starts everything is black.
+ */
+function introState(introAt, now) {
+  const rowAlpha = new Float32Array(8);
+  if (introAt == null) return { fade: 0, rowAlpha };
+  const t = now - introAt;
+  for (let i = 0; i < 8; i++) {
+    rowAlpha[i] = smoothstep((t - INTRO.rowDelayMs - i * INTRO.rowStaggerMs) / INTRO.rowFadeMs);
+  }
+  return { fade: smoothstep(t / INTRO.bgFadeMs), rowAlpha };
+}
+
+function useAnimationLoop(target, draw, introRef) {
   useEffect(() => {
     const smooth = makeSmoother();
     let raf = 0;
@@ -46,7 +64,7 @@ function useAnimationLoop(target, draw) {
       // front/back tilt (v) drives BOTH the row heights and the gradient field;
       // left/right tilt (h) is currently disabled (to restore: draw(layoutRows(v), h))
       const e = easeInOut(v);
-      draw(layoutRows(e), e);
+      draw(layoutRows(e), e, introState(introRef.current, now));
       raf = requestAnimationFrame(tick);
     };
     const onVis = () => {
@@ -56,10 +74,10 @@ function useAnimationLoop(target, draw) {
     raf = requestAnimationFrame(tick);
     document.addEventListener('visibilitychange', onVis);
     return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); };
-  }, [target, draw]);
+  }, [target, draw, introRef]);
 }
 
-function GLStage({ svgText, target, onFail }) {
+function GLStage({ svgText, target, introRef, onFail }) {
   const canvasRef = useRef(null);
   const [renderer, setRenderer] = useState(null);
 
@@ -83,19 +101,20 @@ function GLStage({ svgText, target, onFail }) {
 
   const drawRef = useRef(() => {});
   drawRef.current = renderer ? renderer.render : () => {};
-  const draw = useRef((s, h) => drawRef.current(s, h)).current;
-  useAnimationLoop(target, draw);
+  const draw = useRef((s, h, i) => drawRef.current(s, h, i)).current;
+  useAnimationLoop(target, draw, introRef);
 
   return <canvas ref={canvasRef} className="stage" aria-hidden="true" />;
 }
 
 /** No-WebGL fallback: CSS gradients from the same field, SVG as a CSS mask. */
-function CSSStage({ svgText, target }) {
+function CSSStage({ svgText, target, introRef }) {
   const bgRef = useRef(null);
   const fgRef = useRef(null);
   const maskUrl = useRef(`url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(stretchable(svgText))}")`).current;
 
-  const draw = useRef((rows, h) => {
+  const draw = useRef((rows, h, intro) => {
+    bgRef.current.style.opacity = intro.fade;
     const view = measureViewport();
     const H = view.H;
     const fit = computeFit(view);
@@ -115,7 +134,7 @@ function CSSStage({ svgText, target }) {
     s.webkitMaskSize = s.maskSize = sizes.join(',');
     s.webkitMaskPosition = s.maskPosition = positions.join(',');
   }).current;
-  useAnimationLoop(target, draw);
+  useAnimationLoop(target, draw, introRef);
 
   return (
     <div ref={bgRef} className="stage" aria-hidden="true">
@@ -124,8 +143,13 @@ function CSSStage({ svgText, target }) {
   );
 }
 
-export default function Stage(props) {
+/** introAt: performance.now() timestamp when the entrance starts (null = black) */
+export default function Stage({ introAt, ...props }) {
   const [gl, setGl] = useState(true);
   const fail = useRef(() => setGl(false)).current;
-  return gl ? <GLStage {...props} onFail={fail} /> : <CSSStage {...props} />;
+  const introRef = useRef(introAt);
+  introRef.current = introAt;
+  return gl
+    ? <GLStage {...props} introRef={introRef} onFail={fail} />
+    : <CSSStage {...props} introRef={introRef} />;
 }

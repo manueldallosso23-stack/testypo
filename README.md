@@ -8,6 +8,13 @@ npm run dev        # https://<LAN-IP>:5173 — open on the phone (accept the sel
 npm run build      # static output in dist/ (serve over HTTPS)
 ```
 
+## Flow
+1. **Home** (Figma frame "home page", 2013:3779): artwork `src/assets/figma/home.svg` (contain-fitted, never distorted)
+   + "tap to enable motion" as live text in Alpen-Trial Stencil Rounded Oblique, blinking.
+2. **Tap** anywhere: motion permission is requested (iOS needs it inside the tap) and the whole home fades out.
+3. **Intro**: the gradient fades in from black, then the 8 IGNOTO rows fade in staggered, top → bottom.
+Timings: `HOME` and `INTRO` in `src/config/art.js`.
+
 ## Controls
 The front/back tilt is absolute: phone **upright** (perpendicular to the ground) = stato 1 (Figma "tilt +100"),
 **50° forward** (top away from you) = stato 2 ("tilt -100"); held beyond both ends (`MOTION.vertical`).

@@ -38,6 +38,8 @@ uniform vec2  uRes;                 // drawing-buffer size (px)
 uniform vec4  uFit;                 // screenUV -> frameUV : uv*xy + zw
 uniform float uRowTop[${ROW_COUNT}];         // row tops    (Figma units)
 uniform float uRowH[${ROW_COUNT}];           // row heights (Figma units)
+uniform float uRowAlpha[${ROW_COUNT}];       // intro: per-row fade-in (0..1)
+uniform float uFade;                // intro: whole-frame fade from black (0..1)
 uniform float uPxPerUnit;           // device px per Figma unit (vertical)
 uniform float uLvlOff[${LEVELS}];          // atlas v offset of each level
 uniform float uLvlH[${LEVELS}];            // atlas v height of each level
@@ -89,7 +91,7 @@ float letters(float u, float y) {
   if (u < 0.0 || u > 1.0) return 0.0;
   for (int i = 0; i < ${ROW_COUNT}; i++) {
     float t = (y - uRowTop[i]) / uRowH[i];
-    if (t >= 0.0 && t < 1.0) return sampleRow(u, t, uRowH[i] * uPxPerUnit);
+    if (t >= 0.0 && t < 1.0) return sampleRow(u, t, uRowH[i] * uPxPerUnit) * uRowAlpha[i];
   }
   return 0.0;                                   // gap between rows
 }
@@ -111,7 +113,7 @@ void main() {
   float dy = 0.25 / uPxPerUnit;
   float m = 0.5 * (letters(fuv.x, y - dy) + letters(fuv.x, y + dy));
 
-  vec3 col = mix(bg, fg, m);
+  vec3 col = mix(bg, fg, m) * uFade;
   col += (hash(frag) - 0.5) / 255.0;       // dither: no banding in dark ramps
   gl_FragColor = vec4(col, 1.0);
 }
@@ -239,7 +241,7 @@ export function createRenderer(canvas, svgText) {
 
   const U = {};
   for (const n of ['uRes', 'uFit', 'uRowTop', 'uRowH', 'uPxPerUnit', 'uLvlOff', 'uLvlH', 'uLvlPx',
-    'uH', 'uFrameH', 'uBgSpan', 'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask']) U[n] = gl.getUniformLocation(prog, n);
+    'uRowAlpha', 'uFade', 'uH', 'uFrameH', 'uBgSpan', 'uBgCol', 'uBgPos', 'uFgCol', 'uFgPos', 'uMask']) U[n] = gl.getUniformLocation(prog, n);
 
   // ---- static uniforms from the Figma config ----
   const bg = rampUniforms(GRADIENTS.background.stops);
@@ -300,8 +302,13 @@ export function createRenderer(canvas, svgText) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas.canvas);
   }
 
-  /** rows = layoutRows(h) for the typography; h (−1..1) for the gradient field */
-  function render(rows, h) {
+  /**
+   * rows = layoutRows(…) for the typography; h (−1..1) for the gradient field;
+   * intro = { fade, rowAlpha[8] } for the entrance sequence.
+   */
+  function render(rows, h, intro) {
+    gl.uniform1f(U.uFade, intro.fade);
+    gl.uniform1fv(U.uRowAlpha, intro.rowAlpha);
     gl.uniform1fv(U.uRowTop, rows.tops);
     gl.uniform1fv(U.uRowH, rows.heights);
     gl.uniform1f(U.uH, h);

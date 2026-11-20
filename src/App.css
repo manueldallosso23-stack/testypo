@@ -40,26 +40,61 @@ body,
   mask-repeat: no-repeat;
 }
 
-/* iOS motion-permission gate: the only UI, gone after one tap */
-.gate {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: end center;
-  padding: 0 16px calc(env(safe-area-inset-bottom) + 48px);
-  border: 0;
-  background: rgba(5, 3, 8, 0.35);
-  color: #d6c2ff;
-  font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
+/* ---------- home page ---------- */
+@font-face {
+  font-family: 'Alpen Trial Stencil Rounded Oblique';
+  src: url('./assets/fonts/Alpen-Trial-StencilRoundedOblique.woff2') format('woff2');
+  font-display: block;
 }
 
-.gate span {
-  padding: 14px 22px;
-  border: 1px solid rgba(214, 194, 255, 0.35);
-  border-radius: 999px;
+.home {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #000;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity var(--home-fade, 700ms) ease-in-out;
+}
+
+.home--leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.home__frame {
+  position: absolute;
+  display: block;
+}
+
+.home__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.home__tap {
+  position: absolute;
+  white-space: nowrap;
+  color: #fff;
+  font-family: 'Alpen Trial Stencil Rounded Oblique', sans-serif;
+  paint-order: stroke fill;
+  animation: home-blink var(--home-blink, 1100ms) ease-in-out infinite;
+}
+
+@keyframes home-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.12; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__tap { animation: none; }
 }
 
 /* measures the safe area (notch / Dynamic Island / home indicator) */

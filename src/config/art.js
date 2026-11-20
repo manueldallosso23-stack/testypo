@@ -58,6 +58,32 @@ export const ROWS = {
   right: [[1, 30], [33, 47], [83, 54], [140, 71], [214, 85], [301, 122], [425, 197], [624, 197]],
 };
 
+/**
+ * Home page (Figma frame "home page", 2013:3779) and the intro sequence.
+ * Times in ms.
+ */
+export const HOME = {
+  frame: { w: 378.701, h: 821 },
+  /** "tap to enable motion" — Alpen-Trial Stencil Rounded Oblique, white */
+  /** + 1 px white stroke, OUTSIDE (as in Figma). baselineNudge: measured offset
+   *  (frame units) for the browser's vs Figma's reading of the font metrics. */
+  tap: { x: 107.85, y: 779.578, size: 19.591, lineHeight: 28, stroke: 1, baselineNudge: 2.5, text: 'tap to enable motion' },
+  /** one full blink cycle of the tap text */
+  blinkMs: 1100,
+  /** fade-out of the whole home after the tap */
+  fadeOutMs: 700,
+};
+export const INTRO = {
+  /** background gradient fade-in from black */
+  bgFadeMs: 700,
+  /** first row starts after this delay */
+  rowDelayMs: 250,
+  /** delay between consecutive rows (top → bottom) */
+  rowStaggerMs: 120,
+  /** fade-in duration of each row */
+  rowFadeMs: 650,
+};
+
 /** Sensor mapping & smoothing */
 export const MOTION = {
   /**
